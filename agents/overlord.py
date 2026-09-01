@@ -5,6 +5,8 @@ loop, handles hardware adaptation, and provides the autonomous command center.
 
 This is the heart of AEGIX. Everything flows through the Overlord.
 """
+import re
+import json
 import time
 import hashlib
 import logging
@@ -430,19 +432,44 @@ class OverlordBrain:
 
         # 6. General Conversational / Tactical Query -> LLM
         response = self._llm_chat(msg_clean)
+        clean_text = self._clean_conversational_text(response)
         
         # Create concise speech version for British TTS
-        first_sentence = response.split(". ")[0].replace("#", "").replace("*", "").strip()
-        if not first_sentence.endswith("."):
+        clean_spoken = re.sub(r'[{}\[\]"\'`*#_]', '', clean_text).strip()
+        first_sentence = clean_spoken.split(". ")[0].strip()
+        if first_sentence and not first_sentence.endswith("."):
             first_sentence += "."
-        speech_text = first_sentence if len(first_sentence) < 180 else response[:160] + "..."
+        speech_text = first_sentence if len(first_sentence) < 180 else clean_spoken[:160] + "..."
 
         return {
-            "speech_text": speech_text,
-            "chat_text": response,
+            "speech_text": speech_text or clean_text,
+            "chat_text": clean_text,
             "intent": "CONVERSATION",
             "status": "clear"
         }
+
+    def _clean_conversational_text(self, raw: str) -> str:
+        """Extract natural language text from raw LLM outputs (stripping JSON/markdown braces)."""
+        if not raw:
+            return ""
+        text = raw.strip()
+        # Strip markdown code blocks
+        text = re.sub(r"```(?:json)?\s*([\s\S]*?)\s*```", r"\1", text).strip()
+        if text.startswith("{") and text.endswith("}"):
+            try:
+                data = json.loads(text)
+                if isinstance(data, dict):
+                    for k in ["assessment", "conversational_response", "message", "response", "summary", "instructions"]:
+                        if k in data and isinstance(data[k], str) and data[k].strip():
+                            return data[k].strip()
+                    joined = " ".join(v for v in data.values() if isinstance(v, str))
+                    if joined.strip():
+                        return joined.strip()
+            except Exception:
+                m = re.search(r'"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"]+)"', text)
+                if m:
+                    return m.group(1).strip()
+        return text
 
     def _llm_chat(self, user_message: str) -> str:
         """Chat with the Brain using LLM."""
@@ -461,12 +488,13 @@ class OverlordBrain:
         prompt = prompt.replace("{network_state}", f"Network: {'ONLINE' if is_online() else 'OFFLINE'}")
 
         try:
-            return call_llm(
+            raw_res = call_llm(
                 agent_name=self.name,
                 system_prompt=prompt,
                 user_message=user_message,
                 temperature=0.5,
             )
+            return self._clean_conversational_text(raw_res)
         except Exception as e:
             return f"Directive evaluated: '{user_message}'. Overlord Brain and the 4 specialized agents are actively defending the system."
 

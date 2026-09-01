@@ -1350,14 +1350,53 @@
     const edithSubContent = document.getElementById('edith-sub-content') || document.createElement('div');
     const spacebarIndicator = document.getElementById('spacebar-indicator') || document.createElement('div');
 
+    function cleanVoiceToText(raw) {
+      if (!raw) return '';
+      let str = String(raw).trim();
+      // Remove markdown code blocks (e.g. ```json ... ```)
+      str = str.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '$1').trim();
+
+      // Check if it's a JSON object string
+      if (str.startsWith('{') && str.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(str);
+          if (typeof parsed === 'object' && parsed !== null) {
+            for (const key of ['assessment', 'conversational_response', 'message', 'response', 'summary', 'instructions', 'speech_text']) {
+              if (parsed[key] && typeof parsed[key] === 'string' && parsed[key].trim()) {
+                str = parsed[key];
+                break;
+              }
+            }
+            if (str.startsWith('{')) {
+              str = Object.values(parsed).filter(v => typeof v === 'string').join(' ');
+            }
+          }
+        } catch(e) {
+          const match = str.match(/"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"]+)"/i);
+          if (match) str = match[1];
+        }
+      }
+
+      // Strip any residual JSON keys, braces, brackets, and markdown artifacts
+      str = str.replace(/\{[\s\S]*?\}/g, '')
+               .replace(/[{}\[\]\\"]/g, '')
+               .replace(/[*#`_•]/g, '')
+               .replace(/<[^>]*>/g, '')
+               .replace(/\s+/g, ' ')
+               .trim();
+
+      return str;
+    }
+
     function logTaskToChatHistory(sender, text) {
       const msgDiv = document.createElement('div');
       msgDiv.className = sender === 'user' ? 'chat-msg user' : 'chat-msg assistant';
       const avatar = sender === 'user' ? '👤' : '⚡';
       const bubblePrefix = sender === 'user' ? '<strong>VOICE DIRECTIVE:</strong> ' : '<strong>EDITH:</strong> ';
+      const displayText = sender === 'assistant' ? (cleanVoiceToText(text) || text) : text;
       msgDiv.innerHTML = `
         <div class="msg-avatar">${avatar}</div>
-        <div class="msg-bubble">${bubblePrefix}${escapeHtml(text)}</div>
+        <div class="msg-bubble">${bubblePrefix}${escapeHtml(displayText)}</div>
       `;
       chatFeed.appendChild(msgDiv);
       chatFeed.scrollTop = chatFeed.scrollHeight;
@@ -1568,8 +1607,8 @@
       isSpeakingOrProcessing = true;
       targetEnergyLevel = 1.0;
 
-      // Clean text for speech and subtitles
-      const cleanVoice = fullText.replace(/[*#`_•]/g, '').replace(/<[^>]*>/g, '').trim();
+      // Extract pure voice-to-text natural language (stripping all JSON, brackets, braces, quotes)
+      const cleanVoice = cleanVoiceToText(fullText);
 
       // Show live bottom subtitle in pure white text with no background
       showSubtitle(cleanVoice);
