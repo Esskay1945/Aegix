@@ -907,11 +907,20 @@
       z-index: 100;
     }
 
+    .top-bar-right {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 150;
+      pointer-events: auto !important;
+    }
+
     .report-nav-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(14, 15, 25, 0.85);
+      background: rgba(14, 15, 25, 0.9);
       border: 1px solid var(--border-gold);
       border-radius: 12px;
       padding: 10px 18px;
@@ -920,7 +929,8 @@
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 1.5px;
-      cursor: pointer;
+      cursor: pointer !important;
+      pointer-events: auto !important;
       backdrop-filter: blur(12px);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
       transition: all 0.25s ease;
@@ -1212,7 +1222,7 @@
     </div>
 
     <!-- Top Right Incident Reports Button -->
-    <div class="top-bar-right">
+    <div class="top-bar-right pointer-active">
       <button class="report-nav-btn" id="open-reports-btn" title="View Technical & Plain-English Incident Reports">
         <span>📑 INCIDENT REPORTS</span>
         <span class="report-live-badge" id="report-badge-count">LIVE</span>
@@ -2090,36 +2100,12 @@
       });
     });
 
-    // ── Download Incident Report Handler ──
+    // ── Download / View Incident Report Handler ──
     const downloadReportBtn = document.getElementById('download-report-btn');
     if (downloadReportBtn) {
-      downloadReportBtn.addEventListener('click', () => {
-        const messages = chatFeed.querySelectorAll('.chat-msg');
-        let reportText = "=================================================\n";
-        reportText += "      AEGIX AUTOMATED THREAT INCIDENT REPORT      \n";
-        reportText += "=================================================\n";
-        reportText += `Generated: ${new Date().toISOString()}\n`;
-        reportText += `System Profile: Windows x64 / AMD64\n`;
-        reportText += `Sub-Agents: Sentinel, Detective, Tactician, Fixer\n`;
-        reportText += "=================================================\n\n";
-
-        messages.forEach(msg => {
-          const isUser = msg.classList.contains('user');
-          const sender = isUser ? "VOICE DIRECTIVE / ANALYST" : "AEGIX OVERLORD BRAIN";
-          const bubbleEl = msg.querySelector('.msg-bubble');
-          const content = bubbleEl ? bubbleEl.innerText.replace(/VOICE DIRECTIVE:|EDITH:/g, '').trim() : '';
-          reportText += `[${sender}]\n${content}\n\n`;
-        });
-
-        const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `AEGIX_Incident_Report_${new Date().toISOString().slice(0,10)}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      downloadReportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openReportsModal();
       });
     }
 
