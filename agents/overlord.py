@@ -436,6 +436,7 @@ class OverlordBrain:
         
         # Create concise speech version for British TTS
         clean_spoken = re.sub(r'[{}\[\]"\'`*#_]', '', clean_text).strip()
+        clean_spoken = re.sub(r'^(?:json\s+assessment\s*:?|assessment\s*:?|json\s*:?)\s*', '', clean_spoken, flags=re.IGNORECASE).strip()
         first_sentence = clean_spoken.split(". ")[0].strip()
         if first_sentence and not first_sentence.endswith("."):
             first_sentence += "."
@@ -449,15 +450,16 @@ class OverlordBrain:
         }
 
     def _clean_conversational_text(self, raw: str) -> str:
-        """Extract natural language text from raw LLM outputs (stripping JSON/markdown braces)."""
+        """Extract natural language text from raw LLM outputs (stripping JSON/markdown braces and labels)."""
         if not raw:
             return ""
         text = raw.strip()
-        # Strip markdown code blocks
-        text = re.sub(r"```(?:json)?\s*([\s\S]*?)\s*```", r"\1", text).strip()
-        if text.startswith("{") and text.endswith("}"):
+        
+        # 1. Try to find and parse any JSON block within ```json ... ``` or { ... }
+        json_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text, re.IGNORECASE)
+        if json_match:
             try:
-                data = json.loads(text)
+                data = json.loads(json_match.group(1))
                 if isinstance(data, dict):
                     for k in ["assessment", "conversational_response", "message", "response", "summary", "instructions"]:
                         if k in data and isinstance(data[k], str) and data[k].strip():
@@ -466,33 +468,60 @@ class OverlordBrain:
                     if joined.strip():
                         return joined.strip()
             except Exception:
-                m = re.search(r'"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"]+)"', text)
-                if m:
-                    return m.group(1).strip()
+                pass
+
+        # 2. Try parsing raw text if it contains JSON braces
+        if "{" in text and "}" in text:
+            b_start = text.find("{")
+            b_end = text.rfind("}")
+            if b_start != -1 and b_end > b_start:
+                try:
+                    data = json.loads(text[b_start:b_end + 1])
+                    if isinstance(data, dict):
+                        for k in ["assessment", "conversational_response", "message", "response", "summary", "instructions"]:
+                            if k in data and isinstance(data[k], str) and data[k].strip():
+                                return data[k].strip()
+                        joined = " ".join(v for v in data.values() if isinstance(v, str))
+                        if joined.strip():
+                            return joined.strip()
+                except Exception:
+                    pass
+
+        # 3. Regex fallback to extract value of "assessment": "..."
+        m = re.search(r'"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', text, re.IGNORECASE)
+        if m:
+            val = m.group(1).replace('\\"', '"').replace('\\n', ' ').strip()
+            if val:
+                return val
+
+        # 4. Strip any residual schema prefixes like "json assessment:", "assessment:", "json:"
+        text = re.sub(r"```(?:json)?\s*[\s\S]*?```", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r'[{}\[\]"\'`*#_]', '', text).strip()
+        text = re.sub(r'^(?:json\s+assessment\s*:?|assessment\s*:?|json\s*:?|response\s*:?|message\s*:?)\s*', '', text, flags=re.IGNORECASE).strip()
+
         return text
 
     def _llm_chat(self, user_message: str) -> str:
-        """Chat with the Brain using LLM."""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "overlord_brain.txt"
-        try:
-            prompt = prompt_file.read_text(encoding="utf-8")
-        except Exception:
-            prompt = (
-                "You are EDITH-SEC, the central AI brain of AEGIX — an advanced autonomous multi-agent "
-                "cybersecurity defense platform. You speak with a refined, tactical, and poised British persona. "
-                "Host context: {hardware_context}. Memory context: {memory_context}."
-            )
-
-        prompt = prompt.replace("{hardware_context}", self.hardware_context)
-        prompt = prompt.replace("{memory_context}", generate_memory_context(user_message, max_lessons=2))
-        prompt = prompt.replace("{network_state}", f"Network: {'ONLINE' if is_online() else 'OFFLINE'}")
+        """Chat directly with EDITH using LLM in conversational English."""
+        system_prompt = (
+            "You are EDITH-SEC, the central AI brain of AEGIX — an advanced autonomous multi-agent "
+            "cybersecurity defense platform. You speak with a refined, tactical, and poised British persona.\n"
+            "You orchestrate 4 specialized sub-agents: Sentinel, Detective, Tactician, and Fixer.\n\n"
+            "CRITICAL INSTRUCTION:\n"
+            "- Respond in natural, direct conversational English as EDITH.\n"
+            "- NEVER output JSON, curly braces, schema keys, or 'assessment:' labels.\n"
+            "- Speak directly to the operator in clear, tactical, professional sentences.\n"
+            f"Host Architecture: {self.hardware_context}\n"
+            f"Network State: {'ONLINE' if is_online() else 'OFFLINE'}\n"
+            f"Memory Context: {generate_memory_context(user_message, max_lessons=2)}"
+        )
 
         try:
             raw_res = call_llm(
                 agent_name=self.name,
-                system_prompt=prompt,
+                system_prompt=system_prompt,
                 user_message=user_message,
-                temperature=0.5,
+                temperature=0.6,
             )
             return self._clean_conversational_text(raw_res)
         except Exception as e:

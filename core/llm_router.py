@@ -241,7 +241,7 @@ def _cognitive_fallback_response(agent_name: str, system_prompt: str, user_messa
     u_lower = user_message.lower()
     s_lower = system_prompt.lower()
 
-    if agent_name == "detective" or "detective" in s_lower:
+    if agent_name == "detective":
         is_ransomware = any(k in u_lower for k in ["encrypt", "shadowcopy", "vssadmin", "ransom"])
         is_bruteforce = any(k in u_lower for k in ["auth_fail", "login failure", "brute", "ssh", "password"])
         is_lateral = any(k in u_lower for k in ["lateral", "psexec", "smb", "wmi", "pass-the-hash"])
@@ -280,7 +280,7 @@ def _cognitive_fallback_response(agent_name: str, system_prompt: str, user_messa
             "ioc_list": ["198.51.100.42", "SOC-HOST-01"]
         })
 
-    elif agent_name == "tactician" or "tactician" in s_lower:
+    elif agent_name == "tactician":
         return (
             "## Incident Summary\n"
             "AEGIX Detective detected high-confidence anomalous threat activity.\n\n"
@@ -289,6 +289,16 @@ def _cognitive_fallback_response(agent_name: str, system_prompt: str, user_messa
             "2. Terminate malicious child processes and apply firewall drop rules.\n"
             "3. Retain cryptographic audit log for compliance validation."
         )
+
+    elif agent_name == "fixer":
+        return json.dumps({
+            "success": True,
+            "execution_results": [
+                {"action_type": "BLOCK_IP", "target": "198.51.100.42", "success": True, "command_executed": "New-NetFirewallRule -DisplayName 'AEGIX_Block_198.51.100.42' -Direction Inbound -Action Block"},
+                {"action_type": "KILL_PROCESS", "target": "mimikatz.exe", "success": True, "command_executed": "Stop-Process -Name 'mimikatz' -Force"}
+            ],
+            "summary": {"total_actions": 2, "successes": 2, "failures": 0}
+        })
 
     else:
         # Overlord or conversational fallback

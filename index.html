@@ -1356,17 +1356,16 @@
     function cleanVoiceToText(raw) {
       if (!raw) return '';
       let str = String(raw).trim();
-      // Remove markdown code blocks (e.g. ```json ... ```)
-      str = str.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '$1').trim();
 
-      // Check if it's a JSON object string
-      if (str.startsWith('{') && str.endsWith('}')) {
+      // 1. Try to extract JSON object from markdown code fence or braces
+      const jsonMatch = str.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i) || str.match(/(\{[\s\S]*\})/);
+      if (jsonMatch) {
         try {
-          const parsed = JSON.parse(str);
+          const parsed = JSON.parse(jsonMatch[1]);
           if (typeof parsed === 'object' && parsed !== null) {
             for (const key of ['assessment', 'conversational_response', 'message', 'response', 'summary', 'instructions', 'speech_text']) {
               if (parsed[key] && typeof parsed[key] === 'string' && parsed[key].trim()) {
-                str = parsed[key];
+                str = parsed[key].trim();
                 break;
               }
             }
@@ -1375,18 +1374,22 @@
             }
           }
         } catch(e) {
-          const match = str.match(/"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"]+)"/i);
-          if (match) str = match[1];
+          const match = str.match(/"(?:assessment|message|response|summary|instructions)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i);
+          if (match) str = match[1].replace(/\\"/g, '"').replace(/\\n/g, ' ').trim();
         }
       }
 
-      // Strip any residual JSON keys, braces, brackets, and markdown artifacts
-      str = str.replace(/\{[\s\S]*?\}/g, '')
+      // 2. Remove code blocks, brackets, braces, and escape sequences
+      str = str.replace(/```(?:json)?\s*[\s\S]*?```/gi, '')
+               .replace(/\{[\s\S]*?\}/g, '')
                .replace(/[{}\[\]\\"]/g, '')
                .replace(/[*#`_•]/g, '')
                .replace(/<[^>]*>/g, '')
-               .replace(/\s+/g, ' ')
                .trim();
+
+      // 3. Strip any residual schema prefixes like "json assessment:", "assessment:", "json:"
+      str = str.replace(/^(?:json\s+assessment\s*:?|assessment\s*:?|json\s*:?|response\s*:?|message\s*:?)\s*/i, '');
+      str = str.replace(/\s+/g, ' ').trim();
 
       return str;
     }
