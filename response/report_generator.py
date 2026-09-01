@@ -63,6 +63,13 @@ def generate_incident_report(
         response_actions, fixer_results
     )
 
+    # ── Plain-English Report (Zero Jargon for Non-Tech Users) ──
+    plain_english_summary = _build_plain_english_summary(
+        incident_id, anomalies, risk_score,
+        affected_ips, affected_users, attack_types,
+        response_actions, fixer_results
+    )
+
     # ── Machine-Readable JSON ──
     raw_json = {
         "report_id": incident_id,
@@ -92,27 +99,170 @@ def generate_incident_report(
             }
             for r in fixer_results
         ],
+        "plain_english_summary": plain_english_summary,
         "executive_summary": executive_summary,
         "technical_report": technical_report,
     }
 
-    # ── Save Report ──
+    # ── Save JSON & Plain-English TXT Reports ──
     reports_dir = Path(settings.REPORTS_DIR)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    report_file = reports_dir / f"incident_{incident_id}_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    with open(report_file, "w", encoding="utf-8") as f:
+    timestamp_str = now.strftime('%Y%m%d_%H%M%S')
+    report_file_json = reports_dir / f"incident_{incident_id}_{timestamp_str}.json"
+    report_file_txt = reports_dir / f"incident_{incident_id}_{timestamp_str}.txt"
+
+    # Write JSON report (for SIEM and programmatic ingestion)
+    with open(report_file_json, "w", encoding="utf-8") as f:
         json.dump(raw_json, f, indent=2, default=str)
 
-    logger.info(f"Incident report saved: {report_file}")
+    # Write Plain-English TXT report (for non-technical executives and users)
+    with open(report_file_txt, "w", encoding="utf-8") as f:
+        f.write(plain_english_summary)
+
+    logger.info(f"Incident report saved: {report_file_json} and {report_file_txt}")
 
     return {
         "report_id": incident_id,
         "executive_summary": executive_summary,
+        "plain_english_summary": plain_english_summary,
         "technical_report": technical_report,
-        "report_file": str(report_file),
+        "report_file": str(report_file_json),
+        "report_file_txt": str(report_file_txt),
         "raw_json": raw_json,
     }
+
+
+def _build_plain_english_summary(
+    incident_id: str,
+    anomalies: List[dict],
+    risk_score: object,
+    affected_ips: set,
+    affected_users: set,
+    attack_types: set,
+    response_actions: list,
+    fixer_results: list,
+) -> str:
+    """
+    Generate an easy-to-read, plain-English summary designed for non-technical 
+    executives, managers, and everyday users with ZERO technical jargon.
+    """
+    score = int(risk_score.total_score) if risk_score and hasattr(risk_score, "total_score") else 50
+    level = str(risk_score.risk_level).upper() if risk_score and hasattr(risk_score, "risk_level") else "MEDIUM"
+    
+    # Friendly risk explanation
+    if score >= 75 or level == "CRITICAL":
+        threat_level_desc = "🔴 CRITICAL (Active Cyber Threat — Immediate Action Taken)"
+        risk_explanation = "A severe cyber threat was detected. The system took immediate emergency action to protect your computers, data, and user accounts."
+    elif score >= 50 or level == "HIGH":
+        threat_level_desc = "🟠 HIGH (Suspicious Attack Activity)"
+        risk_explanation = "Significant unauthorized activity was detected. Defenses were raised to isolate the suspicious computers and protect accounts."
+    elif score >= 25 or level == "MEDIUM":
+        threat_level_desc = "🟡 MEDIUM (Guessed Passwords / Potential Intrusion Attempt)"
+        risk_explanation = "Someone attempted to test or guess passwords repeatedly to get in, but defenses actively filtered out and blocked the attempts."
+    else:
+        threat_level_desc = "🟢 LOW (Minor Routine Activity)"
+        risk_explanation = "Routine scanning traffic was detected and filtered out. All systems remain fully secure."
+
+    # Simplify attack types into plain English
+    plain_actions_explained = []
+    for a in attack_types:
+        a_str = str(a).lower()
+        if "brute_force_success" in a_str:
+            plain_actions_explained.append("⚠️ Successful login after guessing passwords — attacker reached system level!")
+        elif "brute_force" in a_str:
+            plain_actions_explained.append("Repeated attempts to guess passwords on employee / system accounts")
+        elif "privilege_escalation" in a_str:
+            plain_actions_explained.append("Attempts to gain administrator / master control over the computer")
+        elif "ransom" in a_str:
+            plain_actions_explained.append("Attempt to delete backup copies or lock files (Ransomware behavior)")
+        elif "lateral" in a_str:
+            plain_actions_explained.append("Attempt to jump from one computer to another inside the internal office network")
+        elif "exfil" in a_str:
+            plain_actions_explained.append("Attempt to secretly send confidential business data outside the company")
+        else:
+            plain_actions_explained.append(f"Suspicious security event: {a}")
+
+    if not plain_actions_explained:
+        plain_actions_explained.append("Suspicious network connection attempts")
+
+    # Format IP addresses
+    ip_list_str = ", ".join(sorted(affected_ips)) if affected_ips else "Internal / Undisclosed"
+    
+    # Format Users
+    user_list_str = ", ".join(sorted(affected_users)) if affected_users else "General system accounts"
+
+    # Mitigation actions taken by AEGIX Fixer
+    mitigation_lines = []
+    if fixer_results:
+        for r in fixer_results:
+            if isinstance(r, dict):
+                cmd = r.get("command", "")
+                success = r.get("success", True)
+                if "New-NetFirewallRule" in cmd or "iptables" in cmd or "BLOCK_IP" in cmd:
+                    mitigation_lines.append("• Blocked the attacking computer address at the network firewall.")
+                elif "Stop-Process" in cmd or "kill" in cmd or "KILL_PROCESS" in cmd:
+                    mitigation_lines.append("• Forcefully terminated the unauthorized program.")
+                else:
+                    mitigation_lines.append(f"• Executed protective defense action ({'Success' if success else 'Pending'}).")
+    if not mitigation_lines:
+        if response_actions:
+            if isinstance(response_actions, str):
+                mitigation_lines.append(f"• Recommended Action: {response_actions}")
+            elif isinstance(response_actions, list):
+                for act in response_actions[:3]:
+                    if isinstance(act, dict):
+                        mitigation_lines.append(f"• {act.get('action', act.get('action_type', 'Defense Action'))}: {act.get('reason', act.get('target', ''))}")
+                    else:
+                        mitigation_lines.append(f"• {act}")
+        else:
+            mitigation_lines.append("• Automatically quarantined malicious traffic and alerted system administrators.")
+
+    # Plain English recommendations for non-tech users
+    recommendations = [
+        "1. Reset passwords for any user accounts mentioned above.",
+        "2. Ensure Multi-Factor Authentication (2FA) is turned on for all logins.",
+        "3. Keep remote connections from unrecognized internet addresses blocked."
+    ]
+
+    report = f"""================================================================================
+                    AEGIX SECURITY INCIDENT SUMMARY
+                 (Simplified Non-Technical Plain-English Report)
+================================================================================
+Report ID      : {incident_id}
+Date & Time    : {datetime.now(timezone.utc).strftime('%B %d, %Y at %H:%M:%S UTC')}
+Threat Level   : {threat_level_desc}
+Overall Status : Protected by AEGIX Autonomous AI Defense Swarm
+================================================================================
+
+1. WHAT HAPPENED? (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+{risk_explanation}
+
+Specific suspicious behaviors detected:
+""" + "\n".join(f"  • {item}" for item in plain_actions_explained) + f"""
+
+2. WHO OR WHAT WAS TARGETED?
+--------------------------------------------------------------------------------
+  • Targeted User Accounts: {user_list_str}
+  • Origin of Attack (Attacking Computer Addresses): {ip_list_str}
+  • Total Suspicious Events Detected: {len(anomalies)}
+
+3. WHAT DID AEGIX DO TO PROTECT YOUR SYSTEM?
+--------------------------------------------------------------------------------
+Our autonomous AI defense agents took the following immediate protective actions:
+""" + "\n".join(f"  {line}" for line in mitigation_lines) + f"""
+
+4. WHAT SHOULD YOU / YOUR TEAM DO NEXT?
+--------------------------------------------------------------------------------
+""" + "\n".join(f"  {r}" for r in recommendations) + """
+
+================================================================================
+  Report generated automatically by AEGIX (Autonomous Cybersecurity Brain)
+  Designed for easy reading by executives, managers, and non-technical staff.
+================================================================================
+"""
+    return report.strip()
 
 
 def _build_executive_summary(
