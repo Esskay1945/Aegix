@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Environment / Secrets (CRITICAL)
+.env
+
+# Testing / Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Data / Generated Output
+data/audit/*.json
+data/memory/*
+data/reports/*.json
+!data/audit/.gitkeep
+!data/memory/.gitkeep
+!data/reports/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

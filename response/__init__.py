@@ -1,0 +1,1 @@
+"""AEGIX Response Package."""
