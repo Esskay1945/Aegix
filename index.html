@@ -697,7 +697,8 @@
     .msg-bubble {
       padding: 12px 16px;
       border-radius: 12px;
-      font-size: 13.5px;
+      font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 16px;
       line-height: 1.55;
       white-space: pre-wrap;
     }
@@ -763,8 +764,8 @@
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
       padding: 10px 14px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 14px;
+      font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 16px;
       color: #fff;
       outline: none;
       transition: border-color 0.2s;
@@ -783,7 +784,7 @@
       border: none;
       color: #000;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 16px;
       padding: 10px 16px;
       border-radius: 10px;
       cursor: pointer;
@@ -1473,19 +1474,40 @@
       isSpeakingOrProcessing = true;
       stopDirectListening();
 
-      // 1. Log task into shared history
+      // 1. Log user voice directive into shared chat history (live transcription)
       logTaskToChatHistory('user', taskText);
 
-      // 2. Set dynamic speech motion for EDITH
+      // 2. Set dynamic speech motion for EDITH 3D nebula
       targetEnergyLevel = 1.0;
 
-      const responseText = await generateAIResponse(taskText);
+      // 3. Route to backend Brain if available, else fallback to client-side
+      let speechText = '';
+      let chatText = '';
+      try {
+        const res = await fetch('/api/voice/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript: taskText })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          speechText = data.speech_text || '';
+          chatText = data.chat_text || speechText;
+        } else {
+          throw new Error('Backend returned ' + res.status);
+        }
+      } catch (err) {
+        console.warn('Backend unavailable for voice, using client-side:', err.message);
+        const fallback = await generateAIResponse(taskText);
+        speechText = fallback;
+        chatText = fallback;
+      }
 
-      // 3. Log response to shared history
-      logTaskToChatHistory('assistant', responseText);
+      // 4. Log EDITH response into shared chat history (live transcription log)
+      logTaskToChatHistory('assistant', chatText);
 
-      // 4. Speak response aloud with British Female voice and animate EDITH
-      speakAndStreamEdithResponse(responseText);
+      // 5. Speak response aloud with British Female voice and animate EDITH
+      speakAndStreamEdithResponse(speechText);
     }
 
     function speakAndStreamEdithResponse(fullText, onEndCallback) {
@@ -1543,11 +1565,28 @@
       chatFeed.appendChild(thinkingDiv);
       chatFeed.scrollTop = chatFeed.scrollHeight;
 
-      const aiResponse = await generateAIResponse(text);
+      // Try backend API first, then fallback to client-side
+      let chatResponse = '';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          chatResponse = data.chat_text || data.speech_text || '';
+        } else {
+          throw new Error('Backend returned ' + res.status);
+        }
+      } catch (err) {
+        console.warn('Backend unavailable for chat, using client-side:', err.message);
+        chatResponse = await generateAIResponse(text);
+      }
 
       // Remove thinking indicator and log real response
       thinkingDiv.remove();
-      logTaskToChatHistory('assistant', aiResponse);
+      logTaskToChatHistory('assistant', chatResponse);
     }
 
     chatSendBtn.addEventListener('click', handleChatSubmit);
@@ -1999,9 +2038,70 @@ Behavior rules:
       }
     }
 
+    // Poll backend for real system status (hardware, network, agents)
+    async function fetchBackendStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          const hw = data.hardware || {};
+          const net = data.network || {};
+
+          // Update network indicator from backend
+          if (netStatusTxt) {
+            netStatusTxt.textContent = net.status_text || 'SYSTEM ONLINE';
+          }
+
+          // Update status text with live uptime
+          const uptimeMins = Math.round((data.uptime_seconds || 0) / 60);
+          const statusEl = document.getElementById('status-txt');
+          if (statusEl) {
+            statusEl.textContent = `OVERLORD ACTIVE · 4 AGENTS ORBITING · ${uptimeMins}m UPTIME`;
+          }
+
+          // Update initial chat message with real hardware profile
+          const archEl = document.getElementById('m-arch');
+          if (archEl) {
+            archEl.textContent = `${hw.architecture || 'x64'} / ${hw.cpu || 'Unknown CPU'}`;
+          }
+        }
+      } catch (e) {
+        // Backend not available, rely on navigator.onLine
+      }
+    }
+
+    // Enhance agent modal opening with live backend telemetry
+    async function fetchAndUpdateAgentModal(idx) {
+      try {
+        const res = await fetch('/api/agents');
+        if (res.ok) {
+          const data = await res.json();
+          const agents = data.agents || [];
+          if (agents[idx]) {
+            const liveAgent = agents[idx];
+            document.getElementById('m-throughput').textContent = liveAgent.throughput || 'N/A';
+            document.getElementById('m-rl').textContent = liveAgent.rlState || 'Active';
+            document.getElementById('m-engine').textContent = 'Dynamic Hardware Prompt (Live)';
+          }
+        }
+      } catch (e) {
+        // Use static data already populated by openAgentModal
+      }
+    }
+
+    // Wire up: after opening an agent modal, also fetch live telemetry
+    const originalOpenAgentModal = openAgentModal;
+    openAgentModal = function(idx) {
+      originalOpenAgentModal(idx);
+      fetchAndUpdateAgentModal(idx);
+    };
+
     window.addEventListener('online', updateLiveNetworkStatus);
     window.addEventListener('offline', updateLiveNetworkStatus);
     updateLiveNetworkStatus();
+    fetchBackendStatus();
+    // Periodically refresh backend status every 30 seconds
+    setInterval(fetchBackendStatus, 30000);
 
     // Threat Simulation Pipeline
     const simAttackBtn = document.getElementById('sim-attack-btn');
@@ -2016,7 +2116,8 @@ Behavior rules:
       }, 5000);
     }
 
-    const attacks = [
+    const scenarios = ['full_attack', 'brute_force', 'full_attack', 'brute_force'];
+    const fallbackAttacks = [
       {
         text: 'The Sentinel filtered 4,200 noisy port scans. The Detective detected brute-force credential stuffing on SSH port 22.',
         action: '⚡ The Fixer: Updated Sentinel firewall rule -> Dropped IP 198.51.100.42 permanently.'
@@ -2032,12 +2133,40 @@ Behavior rules:
     ];
     let attackIdx = 0;
 
-    simAttackBtn.addEventListener('click', () => {
-      const att = attacks[attackIdx % attacks.length];
+    simAttackBtn.addEventListener('click', async () => {
+      simAttackBtn.disabled = true;
+      simAttackBtn.style.opacity = '0.5';
+
+      try {
+        const scenario = scenarios[attackIdx % scenarios.length];
+        const res = await fetch('/api/demo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario: scenario })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const toast = data.toast || {};
+          document.getElementById('toast-text').textContent = toast.text || 'Threat detected and contained.';
+          document.getElementById('toast-fixer').textContent = toast.fixer || '⚡ The Fixer: Autonomous containment executed.';
+          // Also log to chat history
+          const pipeline = data.pipeline_result || {};
+          logTaskToChatHistory('user', `⚡ SIMULATE ATTACK: ${scenario.replace(/_/g, ' ').toUpperCase()}`);
+          logTaskToChatHistory('assistant', `Pipeline complete. Risk: ${pipeline.risk_score || 'N/A'}/100 (${pipeline.risk_level || 'DETECTED'}). Incident: ${pipeline.incident_id || 'N/A'}`);
+        } else {
+          throw new Error('Backend returned ' + res.status);
+        }
+      } catch (err) {
+        console.warn('Backend unavailable for demo, using client-side fallback:', err.message);
+        const att = fallbackAttacks[attackIdx % fallbackAttacks.length];
+        document.getElementById('toast-text').textContent = att.text;
+        document.getElementById('toast-fixer').textContent = att.action;
+      }
+
       attackIdx++;
-      document.getElementById('toast-text').textContent = att.text;
-      document.getElementById('toast-fixer').textContent = att.action;
       triggerThreatToast();
+      simAttackBtn.disabled = false;
+      simAttackBtn.style.opacity = '1';
     });
   </script>
 </body>

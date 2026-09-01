@@ -170,6 +170,9 @@ def main():
     parser.add_argument("--analyze", type=str, help="Analyze a specific log file")
     parser.add_argument("--live", action="store_true", help="Monitor live network traffic")
     parser.add_argument("--status", action="store_true", help="Show system status and exit")
+    parser.add_argument("--server", action="store_true", help="Start the AEGIX Web Server and Voice/Chat UI")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host address for web server (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8000, help="Port for web server (default: 8000)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
@@ -182,6 +185,13 @@ def main():
     # Create data directories
     for dir_name in ["data/sample_logs", "data/audit", "data/memory", "data/reports", "data/quarantine"]:
         os.makedirs(os.path.join(os.path.dirname(__file__), dir_name), exist_ok=True)
+
+    if args.server:
+        console.print(f"[bold green]Starting AEGIX Web Server on http://{args.host}:{args.port}...[/bold green]")
+        console.print("[dim]Serving Three.js UI with live voice prompting and transcription engine.[/dim]\n")
+        from server import run_server
+        run_server(host=args.host, port=args.port)
+        return
 
     # Initialize the Brain
     console.print("[bold yellow]Initializing the Agentic Brain...[/bold yellow]\n")

@@ -20,6 +20,7 @@ htmlcov/
 
 # Local Data / Generated Output
 data/audit/*.json
+data/audit/*.jsonl
 data/memory/*
 data/reports/*.json
 !data/audit/.gitkeep
