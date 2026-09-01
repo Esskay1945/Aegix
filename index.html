@@ -885,9 +885,287 @@
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    #voice-subtitles.active {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    /* ══════════════════════════════════════════════════
+       TOP RIGHT INCIDENT REPORTS BUTTON & DUAL-TAB MODAL
+       ══════════════════════════════════════════════════ */
+    .top-bar-right {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+    }
+
+    .report-nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 15, 25, 0.85);
+      border: 1px solid var(--border-gold);
+      border-radius: 12px;
+      padding: 10px 18px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
+      transition: all 0.25s ease;
+    }
+
+    .report-nav-btn:hover {
+      background: rgba(255, 170, 0, 0.18);
+      border-color: var(--gold-bright);
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.7), 0 0 25px rgba(255, 170, 0, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .report-live-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      background: var(--gold-bright);
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+
+    #reports-modal-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(880px, 95vw);
+      height: min(740px, 90vh);
+      background: var(--bg-modal);
+      border: 1px solid var(--border-gold);
+      border-radius: 20px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.95), 0 0 60px rgba(255, 170, 0, 0.2);
+      z-index: 205;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(28px);
+    }
+
+    #reports-modal-card.active {
+      display: flex;
+      animation: modalPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .reports-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(14, 15, 25, 0.7);
+    }
+
+    .reports-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .reports-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffaa00 0%, #ff5500 100%);
+      box-shadow: 0 0 16px rgba(255, 170, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .reports-name-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .reports-title {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      color: #fff;
+    }
+
+    .reports-status {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      color: var(--gold-bright);
+    }
+
+    .reports-tab-nav {
+      display: flex;
+      background: rgba(0, 0, 0, 0.4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .report-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 14px 18px;
+      color: var(--text-dim);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .report-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 170, 0, 0.05);
+    }
+
+    .report-tab-btn.active {
+      color: var(--gold-bright);
+      background: rgba(255, 170, 0, 0.1);
+      border-bottom-color: var(--gold-bright);
+      box-shadow: inset 0 -2px 10px rgba(255, 170, 0, 0.2);
+    }
+
+    .tab-subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: var(--text-dim);
+    }
+
+    .reports-meta-strip {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 24px;
+      background: rgba(10, 11, 18, 0.5);
+      border-bottom: 1px solid var(--border-subtle);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11.5px;
+      flex-wrap: wrap;
+    }
+
+    .meta-strip-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-strip-lbl {
+      color: var(--text-dim);
+    }
+
+    .meta-strip-val {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .reports-select {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .reports-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .report-tab-pane {
+      display: none;
+    }
+
+    .report-tab-pane.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .plain-report-container {
+      font-family: 'Inter', 'Roboto', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #e6e8ee;
+    }
+
+    .plain-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+
+    .plain-card-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold-bright);
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .plain-bullet-list {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .plain-bullet-list li {
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .plain-bullet-list li::before {
+      content: '•';
+      position: absolute;
+      left: 6px;
+      color: var(--gold-bright);
+      font-weight: bold;
+    }
+
+    .technical-report-pre {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #70d6ff;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 18px 20px;
+      white-space: pre-wrap;
+      overflow-x: auto;
     }
   </style>
 </head>
@@ -921,6 +1199,14 @@
       <!-- Simulate Attack Pipeline Button (Directly below Live Status) -->
       <button class="sim-btn-top" id="sim-attack-btn">
         <span>⚡ SIMULATE ATTACK PIPELINE</span>
+      </button>
+    </div>
+
+    <!-- Top Right Incident Reports Button -->
+    <div class="top-bar-right">
+      <button class="report-nav-btn" id="open-reports-btn" title="View Technical & Plain-English Incident Reports">
+        <span>📑 INCIDENT REPORTS</span>
+        <span class="report-live-badge" id="report-badge-count">LIVE</span>
       </button>
     </div>
   </header>
@@ -1023,6 +1309,73 @@
     <div class="chat-footer">
       <input type="text" class="chat-input" id="chat-input-field" placeholder="Enter task for AEGIX Brain or EDITH...">
       <button class="chat-send-btn" id="chat-send-action">SEND</button>
+    </div>
+  </div>
+
+  <!-- AEGIX INCIDENT REPORTS MODAL (Technical & Plain English Tabs) -->
+  <div id="reports-modal-card">
+    <div class="reports-modal-header">
+      <div class="reports-header-left">
+        <div class="reports-avatar">📑</div>
+        <div class="reports-name-block">
+          <span class="reports-title">AEGIX INCIDENT AUDIT & FORENSIC VIEWER</span>
+          <span class="reports-status" id="reports-status-label">● DUAL-TIER REPORT INTELLIGENCE</span>
+        </div>
+      </div>
+      <div class="chat-header-actions" style="display: flex; gap: 10px; align-items: center;">
+        <button id="reports-download-btn" class="chat-send-btn" style="padding: 7px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 8px; cursor: pointer;">📥 EXPORT REPORT (.TXT)</button>
+        <button class="modal-close-btn" id="reports-close-btn" aria-label="Close reports">✕</button>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="reports-tab-nav">
+      <button class="report-tab-btn active" data-tab="plain">
+        <span>💡 NON-TECHNICAL EXPLANATION</span>
+        <span class="tab-subtitle">Simple, Plain-English Breakdown</span>
+      </button>
+      <button class="report-tab-btn" data-tab="technical">
+        <span>🔍 TECHNICAL FORENSIC REPORT</span>
+        <span class="tab-subtitle">Full MITRE, IOCs & Anomaly Telemetry</span>
+      </button>
+    </div>
+
+    <!-- Report Meta Strip -->
+    <div class="reports-meta-strip">
+      <div class="meta-strip-item">
+        <span class="meta-strip-lbl">Incident ID:</span>
+        <span class="meta-strip-val" id="rep-meta-id">AEGIX-0001</span>
+      </div>
+      <div class="meta-strip-item">
+        <span class="meta-strip-lbl">Threat Level:</span>
+        <span class="meta-strip-val" id="rep-meta-level" style="color: var(--gold-bright);">MEDIUM (46/100)</span>
+      </div>
+      <div class="meta-strip-item">
+        <span class="meta-strip-lbl">Generated:</span>
+        <span class="meta-strip-val" id="rep-meta-time">Live Sync</span>
+      </div>
+      <div class="meta-strip-item" style="margin-left: auto;">
+        <select id="reports-selector-dropdown" class="reports-select">
+          <option value="latest">Latest Incident (Active)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="reports-modal-body">
+      <!-- Tab 1: Plain English Content -->
+      <div class="report-tab-pane active" id="pane-plain">
+        <div class="plain-report-container" id="rep-plain-content">
+          <div style="text-align: center; color: var(--text-dim); padding: 40px;">
+            Loading latest security incident reports...
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Technical Content -->
+      <div class="report-tab-pane" id="pane-technical">
+        <pre class="technical-report-pre" id="rep-tech-content">Loading technical report telemetry...</pre>
+      </div>
     </div>
   </div>
 
@@ -1554,13 +1907,10 @@
       isSpeakingOrProcessing = true;
       stopDirectListening();
 
-      // 1. Log user voice directive into shared chat history (live transcription)
-      logTaskToChatHistory('user', taskText);
-
-      // 2. Set dynamic speech motion for EDITH 3D nebula
+      // 1. Set dynamic speech motion for EDITH 3D nebula
       targetEnergyLevel = 1.0;
 
-      // 3. Route to backend Brain if available, else fallback to client-side
+      // 2. Route to backend Brain if available, else fallback to client-side
       let speechText = '';
       let chatText = '';
       try {
@@ -1573,6 +1923,10 @@
           const data = await res.json();
           speechText = data.speech_text || '';
           chatText = data.chat_text || speechText;
+          // If pipeline resulted in threat report, refresh reports modal
+          if (data.pipeline_result) {
+            loadReportsData();
+          }
         } else {
           throw new Error('Backend returned ' + res.status);
         }
@@ -1583,10 +1937,7 @@
         chatText = fallback;
       }
 
-      // 4. Log EDITH response into shared chat history (live transcription log)
-      logTaskToChatHistory('assistant', chatText);
-
-      // 5. Speak response aloud with British Female voice and animate EDITH
+      // 3. Speak response aloud with British Female voice and animate EDITH & show bottom subtitles
       speakAndStreamEdithResponse(speechText);
     }
 
@@ -1741,6 +2092,146 @@
         URL.revokeObjectURL(url);
       });
     }
+
+    /* ══════════════════════════════════════════════════
+       INCIDENT REPORTS DATA & DUAL-TAB VIEWER ENGINE
+       ══════════════════════════════════════════════════ */
+    let cachedReports = [];
+    let currentSelectedReport = null;
+    let currentActiveTab = 'plain';
+
+    // Tab switching in Reports modal
+    document.querySelectorAll('.report-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.report-tab-pane').forEach(p => p.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const tab = btn.getAttribute('data-tab');
+        currentActiveTab = tab;
+        const targetPane = document.getElementById(`pane-${tab}`);
+        if (targetPane) targetPane.classList.add('active');
+      });
+    });
+
+    async function loadReportsData() {
+      try {
+        const res = await fetch('/api/reports/latest');
+        if (res.ok) {
+          const data = await res.json();
+          cachedReports = data.reports || [];
+          populateReportsDropdown(cachedReports);
+          if (cachedReports.length > 0) {
+            renderReportDetails(cachedReports[0]);
+          } else {
+            document.getElementById('rep-plain-content').innerHTML = `
+              <div class="plain-card" style="text-align: center; color: var(--text-dim);">
+                <div class="plain-card-title">🛡️ SYSTEM NORMAL</div>
+                <p>No high-risk incident reports generated yet. Click <strong>"⚡ SIMULATE ATTACK PIPELINE"</strong> on the left to trigger a live threat correlation and generate a new dual-tier incident report.</p>
+              </div>
+            `;
+            document.getElementById('rep-tech-content').textContent = "No technical reports generated yet.";
+          }
+        }
+      } catch (err) {
+        console.warn('Error loading reports:', err);
+      }
+    }
+
+    function populateReportsDropdown(reports) {
+      const select = document.getElementById('reports-selector-dropdown');
+      if (!select) return;
+      select.innerHTML = '';
+      reports.forEach((rep, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${rep.report_id} — ${rep.risk_level} (${Math.round(rep.risk_score)}/100)`;
+        select.appendChild(opt);
+      });
+
+      select.onchange = (e) => {
+        const idx = parseInt(e.target.value, 10);
+        if (cachedReports[idx]) {
+          renderReportDetails(cachedReports[idx]);
+        }
+      };
+    }
+
+    function renderReportDetails(rep) {
+      currentSelectedReport = rep;
+      document.getElementById('rep-meta-id').textContent = rep.report_id || 'AEGIX-0001';
+      const riskEl = document.getElementById('rep-meta-level');
+      const score = Math.round(rep.risk_score || 0);
+      riskEl.textContent = `${rep.risk_level || 'MEDIUM'} (${score}/100)`;
+      riskEl.style.color = score >= 75 ? 'var(--red-threat)' : 'var(--gold-bright)';
+      document.getElementById('rep-meta-time').textContent = rep.generated_at ? new Date(rep.generated_at).toLocaleTimeString() : 'Live';
+
+      // 1. Render Technical pre
+      document.getElementById('rep-tech-content').textContent = rep.technical_report || 'Technical report telemetry details not available.';
+
+      // 2. Render Plain-English friendly cards
+      const plainDiv = document.getElementById('rep-plain-content');
+      plainDiv.innerHTML = `
+        <div class="plain-card" style="border-left: 4px solid var(--gold-bright);">
+          <div class="plain-card-title">🛡️ INCIDENT SUMMARY & THREAT OVERVIEW</div>
+          <p style="margin: 0; font-size: 15px;">
+            ${rep.risk_level === 'CRITICAL' ? '⚠️ <strong>CRITICAL THREAT:</strong> A high-severity intrusion attempt was detected and contained.' : '🟡 <strong>SECURITY ALERT:</strong> The AI Defense Swarm detected and neutralized anomalous network activity.'}
+          </p>
+        </div>
+
+        <div class="plain-card">
+          <div class="plain-card-title">🔍 WHAT WAS DETECTED? (IN SIMPLE WORDS)</div>
+          <ul class="plain-bullet-list">
+            <li><strong>Targeted User Accounts:</strong> ${rep.affected_users && rep.affected_users.length ? rep.affected_users.join(', ') : 'General system accounts'}</li>
+            <li><strong>Origin / Attacker Addresses:</strong> ${rep.affected_ips && rep.affected_ips.length ? rep.affected_ips.join(', ') : 'Internal / Unknown'}</li>
+            <li><strong>Suspicious Activity Types:</strong> ${rep.attack_types && rep.attack_types.length ? rep.attack_types.join(', ') : 'Brute Force password attempts'}</li>
+            <li><strong>Total Anomalies Filtered:</strong> ${rep.anomaly_count || 0} events</li>
+          </ul>
+        </div>
+
+        <div class="plain-card" style="border-left: 4px solid var(--green-live);">
+          <div class="plain-card-title" style="color: var(--green-live);">⚡ ACTIONS TAKEN BY AEGIX DEFENSE SWARM</div>
+          <ul class="plain-bullet-list">
+            <li><strong>Sentinel:</strong> Dropped 99% benign log noise and isolated suspicious connection bursts.</li>
+            <li><strong>Detective:</strong> Reconstructed multi-stage attack pattern and identified attacker intent.</li>
+            <li><strong>Tactician:</strong> Calculated risk score and produced compliance forensic audit.</li>
+            <li><strong>The Fixer:</strong> Autonomously applied firewall drop rules and terminated malicious processes.</li>
+          </ul>
+        </div>
+
+        <div class="plain-card">
+          <div class="plain-card-title">💡 WHAT SHOULD YOUR TEAM DO NEXT?</div>
+          <ul class="plain-bullet-list">
+            <li>1. Verify passwords for any employee or service accounts targeted.</li>
+            <li>2. Confirm Multi-Factor Authentication (2FA) is enforced.</li>
+            <li>3. Keep attacker IP addresses quarantined at the perimeter firewall.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    // Export from Reports Modal
+    const reportsDownloadBtn = document.getElementById('reports-download-btn');
+    if (reportsDownloadBtn) {
+      reportsDownloadBtn.addEventListener('click', () => {
+        if (!currentSelectedReport) return;
+        const isPlain = currentActiveTab === 'plain';
+        const reportContent = isPlain ? (currentSelectedReport.plain_english_summary || currentSelectedReport.executive_summary) : currentSelectedReport.technical_report;
+        
+        const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AEGIX_${currentSelectedReport.report_id}_${isPlain ? 'Plain_English' : 'Technical'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // Initial reports preload
+    setTimeout(loadReportsData, 1000);
 
     /* ══════════════════════════════════════════════════
        MISTRAL AI LLM ENGINE INTEGRATION

@@ -291,6 +291,55 @@ async def run_demo_endpoint(req: Optional[DemoRequest] = None):
     }
 
 
+@app.get("/api/reports/latest")
+async def get_latest_reports_endpoint():
+    """
+    Return all generated incident reports with both technical and plain-English representations.
+    """
+    reports_dir = Path(settings.REPORTS_DIR)
+    reports = []
+    if reports_dir.exists():
+        json_files = sorted(reports_dir.glob("incident_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for jf in json_files[:15]:
+            try:
+                with open(jf, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                
+                txt_path = jf.with_suffix(".txt")
+                plain_txt = ""
+                if txt_path.exists():
+                    with open(txt_path, "r", encoding="utf-8") as tf:
+                        plain_txt = tf.read()
+                else:
+                    plain_txt = data.get("plain_english_summary") or data.get("executive_summary") or ""
+
+                reports.append({
+                    "report_id": data.get("report_id", jf.stem),
+                    "filename": jf.name,
+                    "generated_at": data.get("generated_at"),
+                    "risk_score": data.get("risk_score", 0),
+                    "risk_level": data.get("risk_level", "UNKNOWN"),
+                    "anomaly_count": data.get("anomaly_count", len(data.get("anomalies", []))),
+                    "attack_types": data.get("attack_types", []),
+                    "mitre_techniques": data.get("mitre_techniques", []),
+                    "affected_ips": data.get("affected_ips", []),
+                    "affected_users": data.get("affected_users", []),
+                    "technical_report": data.get("technical_report", ""),
+                    "plain_english_summary": plain_txt,
+                    "executive_summary": data.get("executive_summary", ""),
+                    "response_actions": data.get("response_actions", []),
+                    "fixer_results": data.get("fixer_results", []),
+                })
+            except Exception as e:
+                logger.warning(f"Error reading report {jf}: {e}")
+
+    return {
+        "total_reports": len(reports),
+        "reports": reports,
+        "latest": reports[0] if reports else None
+    }
+
+
 # ── WebSocket Real-Time Channel ──
 
 class ConnectionManager:

@@ -108,3 +108,13 @@ def test_api_demo(client):
     assert "pipeline_result" in data
     assert "toast" in data
     assert "CRITICAL THREAT" in data["toast"]["title"]
+
+
+def test_api_reports_latest(client):
+    """Test /api/reports/latest endpoint for retrieving dual-tier incident reports."""
+    response = client.get("/api/reports/latest")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_reports" in data
+    assert "reports" in data
+    assert isinstance(data["reports"], list)
