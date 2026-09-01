@@ -695,12 +695,21 @@
     }
 
     .msg-bubble {
-      padding: 12px 16px;
+      padding: 12px 18px;
       border-radius: 12px;
       font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 16px;
-      line-height: 1.55;
-      white-space: pre-wrap;
+      font-size: 14.5px;
+      line-height: 1.6;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .msg-bubble p {
+      margin: 0 0 8px 0;
+    }
+
+    .msg-bubble p:last-child {
+      margin-bottom: 0;
     }
 
     .chat-msg.user .msg-bubble {
@@ -1286,13 +1295,9 @@
       <div class="chat-msg assistant">
         <div class="msg-avatar">⚡</div>
         <div class="msg-bubble">
-          <strong>AEGIX Brain Online.</strong> Hardware context profile initialized for
-          <code>Windows x64 / AMD64</code>.
-          The 4 specialized agents (Sentinel, Detective, Tactician, Fixer) are synchronized with the Vector Memory
-          store.
-          <br><br>
-          All voice directives given to EDITH on the main screen (via Spacebar) are logged here automatically. You can
-          also enter tasks below.
+          <p><strong>AEGIX Brain Online.</strong> Hardware context profile initialized for <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 13px;">Windows x64 / AMD64</code>.</p>
+          <p>The 4 specialized agents (Sentinel, Detective, Tactician, Fixer) are synchronized with the Vector Memory store.</p>
+          <p style="color: var(--text-dim); font-size: 13px; margin-top: 8px;">Type a task or directive below to consult the Overlord Brain, or press <strong>Spacebar</strong> to speak directly to EDITH.</p>
         </div>
       </div>
     </div>
@@ -1635,8 +1640,20 @@
     const backdrop = document.getElementById('modal-backdrop');
     const agentModalCard = document.getElementById('agent-modal-card');
     const chatModalCard = document.getElementById('chat-modal-card');
+    const reportsModalCard = document.getElementById('reports-modal-card');
     const agentCloseBtn = document.getElementById('modal-close-btn');
     const chatCloseBtn = document.getElementById('chat-close-btn');
+    const reportsCloseBtn = document.getElementById('reports-close-btn');
+    const openReportsBtn = document.getElementById('open-reports-btn');
+
+    function openReportsModal() {
+      closeAllModals();
+      backdrop.classList.add('active');
+      if (reportsModalCard) {
+        reportsModalCard.classList.add('active');
+        loadReportsData();
+      }
+    }
 
     function openAgentModal(idx) {
       closeAllModals();
@@ -1675,6 +1692,7 @@
       backdrop.classList.remove('active');
       agentModalCard.classList.remove('active');
       chatModalCard.classList.remove('active');
+      if (reportsModalCard) reportsModalCard.classList.remove('active');
     }
 
     // Logo Click triggers the full Chatbot & History
@@ -1682,6 +1700,17 @@
       e.stopPropagation();
       openChatModal();
     });
+
+    if (openReportsBtn) {
+      openReportsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openReportsModal();
+      });
+    }
+
+    if (reportsCloseBtn) {
+      reportsCloseBtn.addEventListener('click', closeAllModals);
+    }
 
     backdrop.addEventListener('click', closeAllModals);
     agentCloseBtn.addEventListener('click', closeAllModals);
@@ -1751,11 +1780,12 @@
       const msgDiv = document.createElement('div');
       msgDiv.className = sender === 'user' ? 'chat-msg user' : 'chat-msg assistant';
       const avatar = sender === 'user' ? '👤' : '⚡';
-      const bubblePrefix = sender === 'user' ? '<strong>VOICE DIRECTIVE:</strong> ' : '<strong>EDITH:</strong> ';
+      const bubblePrefix = sender === 'user' ? '<span style="color: var(--gold-bright); font-weight: 700; font-size: 11px; letter-spacing: 1px; display: block; margin-bottom: 4px;">USER TASK</span>' : '<span style="color: var(--gold-bright); font-weight: 700; font-size: 11px; letter-spacing: 1px; display: block; margin-bottom: 4px;">AEGIX BRAIN</span>';
       const displayText = sender === 'assistant' ? (cleanVoiceToText(text) || text) : text;
+      const formattedHtml = escapeHtml(displayText).replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
       msgDiv.innerHTML = `
         <div class="msg-avatar">${avatar}</div>
-        <div class="msg-bubble">${bubblePrefix}${escapeHtml(displayText)}</div>
+        <div class="msg-bubble">${bubblePrefix}<p style="margin: 0; line-height: 1.55;">${formattedHtml}</p></div>
       `;
       chatFeed.appendChild(msgDiv);
       chatFeed.scrollTop = chatFeed.scrollHeight;
