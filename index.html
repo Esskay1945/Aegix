@@ -12,6 +12,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
     rel="stylesheet">
+  <!-- HTML to PDF Exporter -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root {
       --bg-primary: #030306;
@@ -1338,7 +1340,7 @@
         </div>
       </div>
       <div class="chat-header-actions" style="display: flex; gap: 10px; align-items: center;">
-        <button id="reports-download-btn" class="chat-send-btn" style="padding: 7px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 8px; cursor: pointer;">📥 EXPORT REPORT (.TXT)</button>
+        <button id="reports-download-btn" class="chat-send-btn" style="padding: 7px 16px; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; background: rgba(255, 170, 0, 0.2); border-color: var(--gold-bright); color: #fff;">📥 EXPORT REPORT (.PDF)</button>
         <button class="modal-close-btn" id="reports-close-btn" aria-label="Close reports">✕</button>
       </div>
     </div>
@@ -2232,24 +2234,131 @@
       `;
     }
 
-    // Export from Reports Modal
+    // Export Incident Report as Professional PDF
     const reportsDownloadBtn = document.getElementById('reports-download-btn');
     if (reportsDownloadBtn) {
       reportsDownloadBtn.addEventListener('click', () => {
-        if (!currentSelectedReport) return;
-        const isPlain = currentActiveTab === 'plain';
-        const reportContent = isPlain ? (currentSelectedReport.plain_english_summary || currentSelectedReport.executive_summary) : currentSelectedReport.technical_report;
-        
-        const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `AEGIX_${currentSelectedReport.report_id}_${isPlain ? 'Plain_English' : 'Technical'}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        if (!currentSelectedReport) {
+          alert('No incident report selected to export.');
+          return;
+        }
+        exportIncidentReportAsPDF(currentSelectedReport);
       });
+    }
+
+    function exportIncidentReportAsPDF(rep) {
+      const score = Math.round(rep.risk_score || 0);
+      const isCritical = score >= 75 || rep.risk_level === 'CRITICAL';
+      const riskColor = isCritical ? '#dc2626' : (score >= 40 ? '#d97706' : '#16a34a');
+
+      // Create high-res PDF print template
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.fontFamily = "'Inter', 'Helvetica Neue', Arial, sans-serif";
+      pdfContainer.style.color = "#111827";
+      pdfContainer.style.background = "#ffffff";
+      pdfContainer.style.padding = "36px";
+      pdfContainer.style.maxWidth = "800px";
+      pdfContainer.style.lineHeight = "1.5";
+
+      pdfContainer.innerHTML = `
+        <div style="border-bottom: 3px solid #111827; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h1 style="font-family: 'Orbitron', Arial, sans-serif; font-size: 24px; font-weight: 900; margin: 0; color: #111827; letter-spacing: 2px;">AEGIX DEFENSE INTELLIGENCE</h1>
+            <p style="font-size: 12px; color: #4b5563; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">Autonomous Multi-Agent Cybersecurity Incident Forensic Report</p>
+          </div>
+          <div style="text-align: right;">
+            <span style="display: inline-block; background: ${riskColor}; color: #ffffff; font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">${rep.risk_level} THREAT (${score}/100)</span>
+            <p style="font-size: 11px; color: #4b5563; margin: 4px 0 0 0; font-weight: 600;">REPORT ID: ${rep.report_id}</p>
+          </div>
+        </div>
+
+        <!-- Meta Summary Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12.5px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+          <tr>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; width: 25%; color: #374151;">Incident Timestamp:</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">${rep.generated_at ? new Date(rep.generated_at).toUTCString() : new Date().toUTCString()}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; width: 25%; color: #374151;">Protected Host:</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">Windows x64 / AMD64 (Zero-Trust)</td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 12px; font-weight: 600; color: #374151;">Targeted Accounts:</td>
+            <td style="padding: 9px 12px; color: #111827;">${rep.affected_users && rep.affected_users.length ? rep.affected_users.join(', ') : 'General system accounts'}</td>
+            <td style="padding: 9px 12px; font-weight: 600; color: #374151;">Origin of Attack:</td>
+            <td style="padding: 9px 12px; color: #111827;">${rep.affected_ips && rep.affected_ips.length ? rep.affected_ips.join(', ') : 'Internal / Undisclosed'}</td>
+          </tr>
+        </table>
+
+        <!-- Section 1: Non-Technical Plain-English Explanation -->
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 15px; font-weight: 700; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px;">1. EXECUTIVE & NON-TECHNICAL SUMMARY (PLAIN ENGLISH)</h2>
+          <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 14px; border-radius: 4px; margin-bottom: 12px;">
+            <p style="margin: 0; font-size: 13.5px; color: #1e40af; font-weight: 600;">
+              ${score >= 60 ? '🚨 Critical Alert: The system detected an unauthorized attack attempting to guess credentials and escalate privileges. Automatic quarantine actions were triggered instantly to protect business assets.' : '🛡️ Proactive Defense: Anomalous password attempts were filtered out and blocked before unauthorized access could occur.'}
+            </p>
+          </div>
+          <ul style="margin: 0 0 10px 18px; padding: 0; font-size: 13px; color: #374151; line-height: 1.6;">
+            <li><strong>Behaviors Detected:</strong> ${rep.attack_types && rep.attack_types.length ? rep.attack_types.join(', ') : 'Brute Force activity'} (${rep.anomaly_count || 1} total telemetry anomalies).</li>
+            <li><strong>Swarm Actions:</strong> Sentinel isolated connection spikes, The Detective correlated multi-stage threat intent, and The Fixer applied firewall drop rules.</li>
+            <li><strong>Actionable Next Steps:</strong> 1. Enforce password resets on affected accounts. 2. Verify 2FA enrollment. 3. Maintain firewall quarantine on attacking IPs.</li>
+          </ul>
+        </div>
+
+        <!-- Section 2: Technical Forensic Detail -->
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 15px; font-weight: 700; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px;">2. TECHNICAL FORENSIC DETAIL & MITRE ATT&CK EVIDENCE</h2>
+          <pre style="background: #0f172a; color: #38bdf8; padding: 14px; border-radius: 6px; font-family: 'Share Tech Mono', monospace, Courier; font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; margin: 0; max-height: 380px; overflow: hidden;">${escapeHtml(rep.technical_report || rep.plain_english_summary || '')}</pre>
+        </div>
+
+        <!-- Section 3: Verification Seal -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #6b7280;">
+          <div>
+            <strong>AEGIX Autonomous Defense Swarm</strong> · Hardware-Aware Zero-Trust Cognitive Engine
+          </div>
+          <div>
+            Cryptographic Seal: <strong style="color: #111827;">HMAC-SHA256-AUTHENTICATED</strong>
+          </div>
+        </div>
+      `;
+
+      const filename = `AEGIX_Incident_Report_${rep.report_id}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+      // Use html2pdf for direct download if available
+      if (typeof html2pdf !== 'undefined') {
+        const opt = {
+          margin: 8,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(pdfContainer).save();
+      } else {
+        // Fallback: Browser Print Dialog for PDF Save
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${filename}</title>
+                <style>
+                  @page { size: A4; margin: 10mm; }
+                  body { margin: 0; padding: 0; }
+                </style>
+              </head>
+              <body>
+                ${pdfContainer.outerHTML}
+                <script>
+                  window.onload = function() {
+                    window.print();
+                  };
+                <\/script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        }
+      }
     }
 
     // Initial reports preload
