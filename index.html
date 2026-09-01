@@ -857,6 +857,38 @@
         max-width: calc(100vw - 32px);
       }
     }
+
+    /* ══════════════════════════════════════════════════
+       BOTTOM VOICE SUBTITLES (NO BG, PURE WHITE TEXT)
+       ══════════════════════════════════════════════════ */
+    #voice-subtitles {
+      position: fixed;
+      bottom: 35px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      width: auto;
+      max-width: 85%;
+      text-align: center;
+      color: #ffffff;
+      font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1.45;
+      letter-spacing: 0.4px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 5px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #voice-subtitles.active {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 
@@ -1003,6 +1035,9 @@
       ⚡ The Fixer: Terminated PID 4192 (x64) & closed Port 4444.
     </div>
   </div>
+
+  <!-- Live Voice Subtitles at bottom of screen (No background, pure white text) -->
+  <div id="voice-subtitles" aria-live="polite"></div>
 
   <!-- Three.js Import Map -->
   <script type="importmap">
@@ -1510,14 +1545,38 @@
       speakAndStreamEdithResponse(speechText);
     }
 
+    /* ── Bottom Subtitle Controller ── */
+    const subtitleEl = document.getElementById('voice-subtitles');
+    let subtitleTimeout = null;
+
+    function showSubtitle(text) {
+      if (!subtitleEl) return;
+      clearTimeout(subtitleTimeout);
+      subtitleEl.textContent = text;
+      subtitleEl.classList.add('active');
+    }
+
+    function hideSubtitle(delay = 1200) {
+      if (!subtitleEl) return;
+      clearTimeout(subtitleTimeout);
+      subtitleTimeout = setTimeout(() => {
+        subtitleEl.classList.remove('active');
+      }, delay);
+    }
+
     function speakAndStreamEdithResponse(fullText, onEndCallback) {
       isSpeakingOrProcessing = true;
       targetEnergyLevel = 1.0;
 
+      // Clean text for speech and subtitles
+      const cleanVoice = fullText.replace(/[*#`_•]/g, '').replace(/<[^>]*>/g, '').trim();
+
+      // Show live bottom subtitle in pure white text with no background
+      showSubtitle(cleanVoice);
+
       // Audio Speech with British Female Voice
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
-        const cleanVoice = fullText.replace(/[*#`_•]/g, '').replace(/<[^>]*>/g, '');
         const utter = new SpeechSynthesisUtterance(cleanVoice);
         const voice = britishFemaleVoice || findBritishFemaleVoice();
         if (voice) utter.voice = voice;
@@ -1528,11 +1587,13 @@
         utter.onend = () => {
           isSpeakingOrProcessing = false;
           targetEnergyLevel = 0.0;
+          hideSubtitle(800);
           if (onEndCallback) onEndCallback();
         };
         utter.onerror = () => {
           isSpeakingOrProcessing = false;
           targetEnergyLevel = 0.0;
+          hideSubtitle(400);
         };
 
         window.speechSynthesis.speak(utter);
@@ -1540,8 +1601,9 @@
         setTimeout(() => {
           isSpeakingOrProcessing = false;
           targetEnergyLevel = 0.0;
+          hideSubtitle(1200);
           if (onEndCallback) onEndCallback();
-        }, 2000);
+        }, 2500);
       }
     }
 
