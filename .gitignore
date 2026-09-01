@@ -8,6 +8,7 @@ env/
 venv/
 .venv/
 ENV/
+node_modules/
 
 # Environment / Secrets (CRITICAL)
 .env
@@ -25,8 +26,13 @@ data/reports/*.json
 !data/memory/.gitkeep
 !data/reports/.gitkeep
 
-# IDE
+# External Repositories
+VoiceStudio/
+
+# IDE / OS
 .vscode/
 .idea/
 *.swp
 *.swo
+.DS_Store
+Thumbs.db
