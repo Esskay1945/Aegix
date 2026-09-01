@@ -23,6 +23,7 @@ data/audit/*.json
 data/audit/*.jsonl
 data/memory/*
 data/reports/*.json
+data/reports/*.txt
 !data/audit/.gitkeep
 !data/memory/.gitkeep
 !data/reports/.gitkeep
